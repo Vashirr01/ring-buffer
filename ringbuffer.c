@@ -9,7 +9,8 @@ typedef struct job_queue{
 	int wp;
 	int rp;
 	pthread_mutex_t lock;
-	pthread_cond_t cond; 
+	pthread_cond_t writeable; 
+	pthread_cond_t readable; 
 } job_queue;
 
 job_queue *init_ring_buffer(int capacity) {
@@ -20,11 +21,15 @@ job_queue *init_ring_buffer(int capacity) {
 	rb->wp = 0;
 	rb->rp = 0;
 	pthread_mutex_init(&rb->lock, NULL);
-	pthread_cond_init(&rb->cond, NULL);
+	pthread_cond_init(&rb->writeable, NULL);
+	pthread_cond_init(&rb->readable, NULL);
 	return rb;
 }
 
 void free_ring_buffer(job_queue* rb) {
+	pthread_cond_destroy(&rb->writeable);
+	pthread_cond_destroy(&rb->readable);
+	pthread_mutex_destroy(&rb->lock);
 	free(rb->buffer);
 	free(rb);
 }
@@ -33,24 +38,24 @@ void free_ring_buffer(job_queue* rb) {
 void add(int* data, job_queue* rb){
 	pthread_mutex_lock(&rb->lock);
 	while (rb->size == rb->capacity) {
-	pthread_cond_wait(&rb->cond, &rb->lock);
+	pthread_cond_wait(&rb->writeable, &rb->lock);
 	}
 	rb->buffer[rb->wp] = *data;
 	rb->wp = (rb->wp +1) % rb->capacity;
 	rb->size++;
-	pthread_cond_signal(&rb->cond);
+	pthread_cond_signal(&rb->readable);
 	pthread_mutex_unlock(&rb->lock);
 }
 
 int get(job_queue* rb){
 	pthread_mutex_lock(&rb->lock);
 	while (rb->size == 0) {
-	pthread_cond_wait(&rb->cond, &rb->lock);
+	pthread_cond_wait(&rb->readable, &rb->lock);
 	}
 	int data = rb->buffer[rb->rp];
 	rb->rp = (rb->rp +1) % rb->capacity;
 	rb->size--;
-	pthread_cond_signal(&rb->cond);
+	pthread_cond_signal(&rb->writeable);
 	pthread_mutex_unlock(&rb->lock);
 	return data;
 }
@@ -73,8 +78,8 @@ void read_from_buffer(void* ringb){
 }
 
 int main() {
-	int n = 1;
-	int m = 1;
+	int n = 2;
+	int m = 2;
 	pthread_t p[n], c[m];
 	void *rb = init_ring_buffer(4);
 	for (int i=0; i< n; i++) {
