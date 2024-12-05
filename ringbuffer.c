@@ -80,10 +80,10 @@ void read_from_buffer(void* ringb){
 }
 
 int main() {
-	int n = 2;
-	int m = 2;
+	int n = 6;
+	int m = 6;
 	pthread_t p[n], c[m];
-	void *rb = init_ring_buffer(4);
+	void *rb = init_ring_buffer(8);
 	for (int i=0; i< n; i++) {
 	pthread_create(&p[i], NULL, (void*) add_to_buffer, (void*) rb);
 	}
