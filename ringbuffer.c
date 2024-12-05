@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -60,11 +61,12 @@ int get(job_queue* rb){
 	return data;
 }
 
+pid_t gettid(void);
 void add_to_buffer(void* ringb){
 	job_queue *rb = ringb;
 	int i = 0;
 	while (1) {
-	printf("%d -> [%d]\n", i, rb->wp);
+	printf("%2d -> [%d]       %d\n", i, rb->wp, gettid());
 	add(&i, rb);
 	i = (i+1)%100;
 	}
@@ -73,7 +75,7 @@ void read_from_buffer(void* ringb){
 	job_queue *rb = ringb;
 	while (1) {
 	int data = get(rb);
-	printf("      [%d] -> %d\n", rb->rp, data);
+	printf("      [%d] -> %2d %d\n", rb->rp, data, gettid());
 	}
 }
 
